@@ -1,0 +1,13 @@
+{
+  "task": "Review this repository context before sending to an AI coding agent.",
+  "files": [
+    {
+      "path": "src/app.py",
+      "content": "API_KEY = 'abc123abc123abc123abc123'\n# TODO: remove local shortcut\n"
+    },
+    {
+      "path": ".env",
+      "content": "SECRET=abc123abc123abc123\n"
+    }
+  ]
+}

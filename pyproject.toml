@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prompt-context-gate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local policy gate for AI coding context bundles."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,6 +25,12 @@ dependencies = []
 
 [project.scripts]
 prompt-context-gate = "prompt_context_gate.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yanqr213/prompt-context-gate"
+Repository = "https://github.com/yanqr213/prompt-context-gate"
+Issues = "https://github.com/yanqr213/prompt-context-gate/issues"
+Changelog = "https://github.com/yanqr213/prompt-context-gate/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

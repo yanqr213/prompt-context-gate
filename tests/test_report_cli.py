@@ -21,6 +21,19 @@ class ReportAndCliTests(unittest.TestCase):
         self.assertIn("severity,rule,path,line,message,detail", output)
         self.assertIn("warning,todo", output)
 
+    def test_render_findings_sarif(self):
+        output = render_findings([Finding("error", "sensitive_patterns", "Sensitive pattern matched.", "src/app.py", 7)], "sarif")
+        payload = json.loads(output)
+
+        self.assertEqual(payload["version"], "2.1.0")
+        self.assertEqual(payload["runs"][0]["tool"]["driver"]["name"], "prompt-context-gate")
+        self.assertEqual(payload["runs"][0]["results"][0]["ruleId"], "sensitive_patterns")
+        self.assertEqual(payload["runs"][0]["results"][0]["level"], "error")
+        self.assertEqual(
+            payload["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "src/app.py",
+        )
+
     def test_render_findings_markdown_no_findings(self):
         output = render_findings([], "markdown")
         self.assertIn("No findings.", output)
@@ -90,6 +103,25 @@ class ReportAndCliTests(unittest.TestCase):
             text = report.read_text(encoding="utf-8")
         self.assertEqual(code, 2)
         self.assertIn("Prompt Context Gate Report", text)
+
+    def test_cli_check_writes_sarif_output_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.json"
+            rules = Path(tmp) / "rules.json"
+            report = Path(tmp) / "reports" / "context.sarif"
+            bundle.write_text(json.dumps({"files": [{"path": ".env", "content": "SECRET=abc123abc123abc123"}]}), encoding="utf-8")
+            rules.write_text(json.dumps({"forbidden_paths": [".env"], "require_readme": False, "require_tests": False, "require_ci": False}), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = main(["check", str(bundle), "-r", str(rules), "-f", "sarif", "-o", str(report)])
+            payload = json.loads(report.read_text(encoding="utf-8"))
+
+        self.assertEqual(code, 2)
+        self.assertEqual(payload["version"], "2.1.0")
+        forbidden_result = next(item for item in payload["runs"][0]["results"] if item["ruleId"] == "forbidden_paths")
+        self.assertEqual(
+            forbidden_result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            ".env",
+        )
 
 
 if __name__ == "__main__":

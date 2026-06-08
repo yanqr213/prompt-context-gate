@@ -32,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
             findings = run_checks(bundle, rules)
             rendered = render_findings(findings, args.output_format)
             if args.output:
+                Path(args.output).parent.mkdir(parents=True, exist_ok=True)
                 Path(args.output).write_text(rendered + ("" if rendered.endswith("\n") else "\n"), encoding="utf-8")
             else:
                 print(rendered)
@@ -62,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
     check_parser = subparsers.add_parser("check", help="Run policy checks against a context bundle.")
     check_parser.add_argument("bundle", help="Markdown or JSON context bundle.")
     check_parser.add_argument("-r", "--rules", help="JSON or simple YAML rules file. Defaults to built-in rules.")
-    check_parser.add_argument("-f", "--output-format", choices=["markdown", "json", "csv"], default="markdown")
+    check_parser.add_argument("-f", "--output-format", choices=["markdown", "json", "csv", "sarif"], default="markdown")
     check_parser.add_argument("-o", "--output", help="Write report to a file instead of stdout.")
 
     return parser

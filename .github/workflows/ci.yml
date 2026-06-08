@@ -25,3 +25,11 @@ jobs:
         run: python -m unittest discover -s tests
       - name: Run example gate
         run: prompt-context-gate check examples/good-context.md -r examples/rules.json -f json
+      - name: Run SARIF smoke
+        run: |
+          set +e
+          prompt-context-gate check examples/risky-context.json -r examples/rules.json -f sarif -o reports/context-gate.sarif
+          status=$?
+          set -e
+          test "$status" -eq 2
+          python -m json.tool reports/context-gate.sarif > /dev/null

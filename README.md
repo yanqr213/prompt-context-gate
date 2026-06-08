@@ -17,7 +17,8 @@
 - 支持 Markdown 和 JSON context bundle。
 - 支持 JSON 规则文件，也支持一个轻量 YAML 子集。
 - 检查总字节预算、估算 token 预算、单文件大小、必需路径、禁止路径、敏感正则、TODO/FIXME、README/测试/CI 覆盖。
-- 输出 Markdown、JSON、CSV。
+- 输出 Markdown、JSON、CSV、SARIF。
+- SARIF 可上传到 GitHub Code Scanning，把上下文 bundle 的安全/质量问题显示在代码扫描视图里。
 - `check` 命令按规则阈值返回退出码，适合 CI gate。
 
 ## 安装
@@ -63,6 +64,7 @@ prompt-context-gate inspect examples/good-context.md -f csv
 prompt-context-gate check examples/good-context.md -r examples/rules.json -f markdown
 prompt-context-gate check examples/risky-context.json -r examples/rules.json -f json
 prompt-context-gate check examples/risky-context.json -r examples/rules.json -f csv -o report.csv
+prompt-context-gate check examples/risky-context.json -r examples/rules.json -f sarif -o context-gate.sarif
 ```
 
 退出码：
@@ -171,6 +173,12 @@ severity,rule,path,line,message,detail
 error,forbidden_paths,.env,,Forbidden path matched: .env.,
 ```
 
+SARIF 输出适合 GitHub Code Scanning 或其他支持 SARIF 2.1.0 的质量/安全平台：
+
+```bash
+prompt-context-gate check context-bundle.md -r context-rules.json -f sarif -o context-gate.sarif
+```
+
 ## CI 用法
 
 GitHub Actions 示例：
@@ -191,6 +199,31 @@ jobs:
 ```
 
 如果命中 `fail_on` 中定义的严重级别，命令会返回 `2`，CI 将失败。
+
+上传 SARIF 到 GitHub Code Scanning：
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-python@v5
+    with:
+      python-version: "3.12"
+  - run: python -m pip install git+https://github.com/yanqr213/prompt-context-gate.git
+  - name: Check context bundle as SARIF
+    run: |
+      prompt-context-gate check context-bundle.md \
+        -r context-rules.json \
+        -f sarif \
+        -o reports/context-gate.sarif
+  - uses: github/codeql-action/upload-sarif@v3
+    if: always()
+    with:
+      sarif_file: reports/context-gate.sarif
+```
 
 ## 隐私与安全边界
 
@@ -224,6 +257,7 @@ PYTHONPATH=src python -m prompt_context_gate.cli --help
 prompt-context-gate init-rules -o context-rules.json
 prompt-context-gate inspect examples/good-context.md -f json
 prompt-context-gate check examples/good-context.md -r examples/rules.json -f markdown
+prompt-context-gate check examples/risky-context.json -r examples/rules.json -f sarif -o context-gate.sarif
 ```
 
 `check` exits with:
@@ -251,6 +285,8 @@ Key fields:
 ### Privacy and Security
 
 This tool runs locally, does not require network access, and only reads files you pass to it. It does not request, print, upload, or push GitHub tokens. Secret detection is rule based and should be used alongside repository secret scanning and human review.
+
+SARIF output can be uploaded with `github/codeql-action/upload-sarif@v3` so context bundle risks appear in GitHub Code Scanning.
 
 ## 测试
 

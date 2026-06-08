@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 - 2026-06-08
+
+- Added SARIF 2.1.0 output for context bundle policy findings.
+- Added CLI support for `check -f sarif`.
+- Report output now creates parent directories automatically.
+- Added SARIF renderer and CLI tests.
+- Expanded Chinese and English README docs with GitHub Code Scanning examples.
+
 ## 0.1.0 - 2026-06-08
 
 - Initial public project.

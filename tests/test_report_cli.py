@@ -62,6 +62,47 @@ class ReportAndCliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(stdout.getvalue())["file_count"], 1)
 
+    def test_cli_inspect_writes_output_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.json"
+            report = Path(tmp) / "reports" / "inspection.json"
+            bundle.write_text(json.dumps({"files": [{"path": "README.md", "content": "# R"}]}), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = main(["inspect", str(bundle), "-f", "json", "-o", str(report)])
+            payload = json.loads(report.read_text(encoding="utf-8"))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["file_count"], 1)
+
+    def test_cli_build_json_then_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tests").mkdir()
+            (root / ".github" / "workflows").mkdir(parents=True)
+            (root / "README.md").write_text("# R", encoding="utf-8")
+            (root / "tests" / "test_app.py").write_text("def test_ok(): pass\n", encoding="utf-8")
+            (root / ".github" / "workflows" / "ci.yml").write_text("name: CI\n", encoding="utf-8")
+            manifest = root / "manifest.txt"
+            manifest.write_text("README.md\ntests/test_app.py\n.github/workflows/ci.yml\n", encoding="utf-8")
+            bundle = root / "context.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                build_code = main(["build", "--root", str(root), "--manifest", str(manifest), "-o", str(bundle)])
+                check_code = main(["check", str(bundle), "-f", "json"])
+
+        self.assertEqual(build_code, 0)
+        self.assertEqual(check_code, 0)
+
+    def test_cli_build_markdown_stdout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("# R", encoding="utf-8")
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                code = main(["build", "--root", str(root), "README.md", "-f", "markdown"])
+
+        self.assertEqual(code, 0)
+        self.assertIn("path=README.md", stdout.getvalue())
+
     def test_cli_check_success_exit_zero(self):
         with tempfile.TemporaryDirectory() as tmp:
             bundle = Path(tmp) / "bundle.json"

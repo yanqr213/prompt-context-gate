@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prompt-context-gate"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local policy gate for AI coding context bundles."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "prompt-context-gate contributors" }]
-keywords = ["ai", "developer-tools", "codex", "claude-code", "context", "security", "ci"]
+keywords = ["ai", "developer-tools", "codex", "claude-code", "context", "security", "ci", "prompt"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

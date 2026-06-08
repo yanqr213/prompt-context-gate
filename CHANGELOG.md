@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-06-08
+
+- Added `build` to create standard JSON or Markdown context bundles from repository files and manifests.
+- Added path traversal protection, duplicate path de-duplication, and optional per-file byte limits during bundle building.
+- Added an example manifest and CI smoke coverage for build -> inspect/check workflows.
+- Expanded Chinese and English README docs for manifest-driven context bundle generation.
+
 ## 0.2.0 - 2026-06-08
 
 - Added SARIF 2.1.0 output for context bundle policy findings.

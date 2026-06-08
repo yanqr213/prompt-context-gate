@@ -15,6 +15,7 @@
 
 - 纯 Python 标准库运行时，不依赖外部网络。
 - 支持 Markdown 和 JSON context bundle。
+- 支持从仓库文件和 manifest 生成标准 JSON/Markdown context bundle。
 - 支持 JSON 规则文件，也支持一个轻量 YAML 子集。
 - 检查总字节预算、估算 token 预算、单文件大小、必需路径、禁止路径、敏感正则、TODO/FIXME、README/测试/CI 覆盖。
 - 输出 Markdown、JSON、CSV、SARIF。
@@ -56,6 +57,14 @@ prompt-context-gate init-rules -o context-rules.json
 prompt-context-gate inspect examples/good-context.md -f markdown
 prompt-context-gate inspect examples/good-context.md -f json
 prompt-context-gate inspect examples/good-context.md -f csv
+prompt-context-gate inspect context-bundle.json -f json -o reports/context-inspection.json
+```
+
+从仓库文件或 manifest 生成标准 context bundle：
+
+```bash
+prompt-context-gate build --root . --manifest examples/manifest.txt -f json -o context-bundle.json
+prompt-context-gate build --root . README.md src/prompt_context_gate/cli.py -f markdown -o context-bundle.md
 ```
 
 执行检查：
@@ -74,6 +83,23 @@ prompt-context-gate check examples/risky-context.json -r examples/rules.json -f 
 - `2`：检查发现应使 CI 失败的问题。
 
 ## Context Bundle 格式
+
+如果你还没有 bundle，推荐用 `build` 从真实仓库文件生成：
+
+```text
+# context-manifest.txt
+README.md
+src/app.py
+tests/test_app.py
+.github/workflows/ci.yml
+```
+
+```bash
+prompt-context-gate build --root . --manifest context-manifest.txt -f json -o context-bundle.json
+prompt-context-gate check context-bundle.json -r context-rules.json -f markdown
+```
+
+manifest 支持空行和 `#` 注释；所有路径都必须位于 `--root` 内，避免意外打包仓库外文件。`--max-file-bytes` 可在打包阶段拒绝过大的单文件。
 
 Markdown 支持带路径的代码块：
 
@@ -195,7 +221,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e .
-      - run: prompt-context-gate check context-bundle.md -r context-rules.json -f markdown
+      - run: prompt-context-gate build --root . --manifest context-manifest.txt -f json -o build/context-bundle.json
+      - run: prompt-context-gate check build/context-bundle.json -r context-rules.json -f markdown
 ```
 
 如果命中 `fail_on` 中定义的严重级别，命令会返回 `2`，CI 将失败。
@@ -228,6 +255,7 @@ steps:
 ## 隐私与安全边界
 
 - 本工具只读取你显式传入的 bundle 和规则文件。
+- `build` 只读取你通过参数或 manifest 显式列出的仓库内文件。
 - 不联网、不上传、不推送 GitHub。
 - 不读取或请求 GitHub token、API key 或其他凭据。
 - 敏感信息检查依赖规则中的正则表达式，不能保证发现所有秘密。请配合仓库 secret scanning、最小化上下文和人工复核。
@@ -255,9 +283,18 @@ PYTHONPATH=src python -m prompt_context_gate.cli --help
 
 ```bash
 prompt-context-gate init-rules -o context-rules.json
+prompt-context-gate build --root . --manifest examples/manifest.txt -f json -o context-bundle.json
 prompt-context-gate inspect examples/good-context.md -f json
 prompt-context-gate check examples/good-context.md -r examples/rules.json -f markdown
 prompt-context-gate check examples/risky-context.json -r examples/rules.json -f sarif -o context-gate.sarif
+```
+
+`build` reads explicit file paths or a newline-delimited manifest, refuses paths outside `--root`, and writes a standard JSON or Markdown context bundle. A common workflow is:
+
+```bash
+prompt-context-gate build --root . --manifest context-manifest.txt -f json -o context-bundle.json
+prompt-context-gate inspect context-bundle.json -f markdown -o reports/context-inspection.md
+prompt-context-gate check context-bundle.json -r context-rules.json -f sarif -o reports/context-gate.sarif
 ```
 
 `check` exits with:

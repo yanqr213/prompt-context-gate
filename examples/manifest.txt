@@ -1,0 +1,6 @@
+# Example context bundle manifest.
+README.md
+src/prompt_context_gate/cli.py
+src/prompt_context_gate/bundle.py
+tests/test_bundle.py
+.github/workflows/ci.yml

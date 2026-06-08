@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from prompt_context_gate.bundle import inspect_bundle, parse_bundle
+from prompt_context_gate.bundle import build_bundle, inspect_bundle, parse_bundle
 
 
 class BundleParsingTests(unittest.TestCase):
@@ -74,6 +74,48 @@ class BundleParsingTests(unittest.TestCase):
             path.write_text("<x />", encoding="utf-8")
             with self.assertRaises(ValueError):
                 parse_bundle(path)
+
+    def test_build_json_bundle_from_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src").mkdir()
+            (root / "README.md").write_text("# R", encoding="utf-8")
+            (root / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+            manifest = root / "manifest.txt"
+            manifest.write_text("# files\nREADME.md\nsrc/app.py\n", encoding="utf-8")
+            bundle_path = root / "bundle.json"
+
+            bundle_path.write_text(build_bundle(root, [], manifest=manifest), encoding="utf-8")
+            bundle = parse_bundle(bundle_path)
+
+        self.assertEqual([file.path for file in bundle.files], ["README.md", "src/app.py"])
+        self.assertEqual(bundle.metadata["metadata"]["generated_by"], "prompt-context-gate")
+
+    def test_build_markdown_bundle_can_be_parsed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("# R", encoding="utf-8")
+            text = build_bundle(root, ["README.md"], output_format="markdown")
+            bundle_path = root / "bundle.md"
+            bundle_path.write_text(text, encoding="utf-8")
+
+            bundle = parse_bundle(bundle_path)
+
+        self.assertEqual(bundle.files[0].path, "README.md")
+        self.assertIn("# R", bundle.files[0].content)
+
+    def test_build_refuses_paths_outside_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaises(ValueError):
+                build_bundle(root, ["../outside.txt"])
+
+    def test_build_respects_max_file_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "big.txt").write_text("abcdef", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                build_bundle(root, ["big.txt"], max_file_bytes=3)
 
 
 if __name__ == "__main__":

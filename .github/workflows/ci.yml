@@ -23,6 +23,13 @@ jobs:
         run: python -m pip install -e .
       - name: Run unit tests
         run: python -m unittest discover -s tests
+      - name: Build example context bundle
+        run: |
+          prompt-context-gate build --root . --manifest examples/manifest.txt -f json -o reports/example-context.json
+          prompt-context-gate inspect reports/example-context.json -f json -o reports/example-inspection.json
+          python -m json.tool reports/example-context.json > /dev/null
+          python -m json.tool reports/example-inspection.json > /dev/null
+          prompt-context-gate check reports/example-context.json -r examples/rules.json -f json
       - name: Run example gate
         run: prompt-context-gate check examples/good-context.md -r examples/rules.json -f json
       - name: Run SARIF smoke

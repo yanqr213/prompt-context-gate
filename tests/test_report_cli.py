@@ -134,6 +134,31 @@ class ReportAndCliTests(unittest.TestCase):
                 code = main(["check", str(bundle), "-r", str(rules), "-f", "json"])
         self.assertEqual(code, 2)
 
+    def test_cli_check_invalid_sensitive_pattern_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle = Path(tmp) / "bundle.json"
+            rules = Path(tmp) / "rules.json"
+            bundle.write_text(json.dumps({"files": [{"path": "src/app.py", "content": "print('ok')"}]}), encoding="utf-8")
+            rules.write_text(
+                json.dumps(
+                    {
+                        "sensitive_patterns": ["(?i)[unterminated"],
+                        "require_readme": False,
+                        "require_tests": False,
+                        "require_ci": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                code = main(["check", str(bundle), "-r", str(rules), "-f", "json"])
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 2)
+        self.assertEqual(payload["findings"][0]["rule"], "invalid_sensitive_pattern")
+        self.assertIn("unterminated", payload["findings"][0]["detail"])
+
     def test_cli_check_writes_output_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             bundle = Path(tmp) / "bundle.json"

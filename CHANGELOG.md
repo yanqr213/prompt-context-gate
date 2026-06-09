@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-06-09
+
+- Invalid `sensitive_patterns` are now reported as `invalid_sensitive_pattern` error findings instead of aborting the whole check.
+- Valid sensitive patterns still run when another configured pattern is invalid, so CI reports every actionable issue in one pass.
+- Added CLI, unit, README, and workflow smoke coverage for invalid sensitive-pattern rules.
+
 ## 0.3.0 - 2026-06-08
 
 - Added `build` to create standard JSON or Markdown context bundles from repository files and manifests.

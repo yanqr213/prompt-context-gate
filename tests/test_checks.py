@@ -33,6 +33,30 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(findings[0].rule, "sensitive_patterns")
         self.assertNotIn("abc123", findings[0].message)
 
+    def test_invalid_sensitive_pattern_is_reported_as_finding(self):
+        findings = run_checks(
+            bundle([("src/app.py", "print('ok')")]),
+            RuleSet(sensitive_patterns=["(?i)[unterminated"], require_readme=False, require_tests=False, require_ci=False),
+        )
+
+        self.assertEqual(findings[0].rule, "invalid_sensitive_pattern")
+        self.assertEqual(findings[0].severity, "error")
+        self.assertIn("unterminated", findings[0].detail)
+
+    def test_invalid_sensitive_pattern_does_not_skip_valid_patterns(self):
+        findings = run_checks(
+            bundle([("src/app.py", "API_KEY='abc123abc123abc123abc123'")]),
+            RuleSet(
+                sensitive_patterns=["(?i)[unterminated", r"API_KEY='[A-Za-z0-9]+'"],
+                require_readme=False,
+                require_tests=False,
+                require_ci=False,
+            ),
+        )
+
+        self.assertIn("invalid_sensitive_pattern", [finding.rule for finding in findings])
+        self.assertIn("sensitive_patterns", [finding.rule for finding in findings])
+
     def test_todo_detected(self):
         findings = run_checks(bundle([("src/app.py", "# TODO finish")]), RuleSet(require_readme=False, require_tests=False, require_ci=False))
         self.assertIn("todo_patterns", [finding.rule for finding in findings])

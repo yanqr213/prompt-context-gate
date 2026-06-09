@@ -32,6 +32,26 @@ jobs:
           prompt-context-gate check reports/example-context.json -r examples/rules.json -f json
       - name: Run example gate
         run: prompt-context-gate check examples/good-context.md -r examples/rules.json -f json
+      - name: Run invalid sensitive-pattern smoke
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          Path("reports").mkdir(exist_ok=True)
+          Path("reports/bad-rules.json").write_text(json.dumps({
+              "sensitive_patterns": ["(?i)[unterminated"],
+              "require_readme": False,
+              "require_tests": False,
+              "require_ci": False
+          }), encoding="utf-8")
+          PY
+          set +e
+          prompt-context-gate check examples/good-context.md -r reports/bad-rules.json -f json -o reports/bad-rules-report.json
+          status=$?
+          set -e
+          test "$status" -eq 2
+          python -m json.tool reports/bad-rules-report.json > /dev/null
+          grep -q invalid_sensitive_pattern reports/bad-rules-report.json
       - name: Run SARIF smoke
         run: |
           set +e

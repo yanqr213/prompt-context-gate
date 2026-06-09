@@ -16,11 +16,13 @@ CI_PATTERNS = [".github/workflows/**", ".gitlab-ci.yml", "azure-pipelines.yml", 
 def run_checks(bundle: ContextBundle, rules: RuleSet) -> list[Finding]:
     findings: list[Finding] = []
     paths = [file.path for file in bundle.files]
+    sensitive_patterns, invalid_sensitive_patterns = _compile_sensitive_patterns(rules.sensitive_patterns)
 
     findings.extend(_budget_findings(bundle, rules))
     findings.extend(_required_path_findings(paths, rules))
     findings.extend(_forbidden_path_findings(paths, rules))
     findings.extend(_coverage_findings(paths, rules))
+    findings.extend(invalid_sensitive_patterns)
 
     for file in bundle.files:
         if rules.max_file_bytes is not None and file.size_bytes > rules.max_file_bytes:
@@ -32,7 +34,7 @@ def run_checks(bundle: ContextBundle, rules: RuleSet) -> list[Finding]:
                     file.path,
                 )
             )
-        findings.extend(_sensitive_findings(file.path, file.content, rules))
+        findings.extend(_sensitive_findings(file.path, file.content, sensitive_patterns))
         if not rules.allow_todos:
             findings.extend(_todo_findings(file.path, file.content, rules))
 
@@ -93,10 +95,27 @@ def _coverage_findings(paths: list[str], rules: RuleSet) -> list[Finding]:
     return findings
 
 
-def _sensitive_findings(path: str, content: str, rules: RuleSet) -> list[Finding]:
+def _compile_sensitive_patterns(patterns: list[str]) -> tuple[list[tuple[str, re.Pattern[str]]], list[Finding]]:
+    compiled_patterns: list[tuple[str, re.Pattern[str]]] = []
     findings: list[Finding] = []
-    for pattern in rules.sensitive_patterns:
-        compiled = re.compile(pattern)
+    for pattern in patterns:
+        try:
+            compiled_patterns.append((pattern, re.compile(pattern)))
+        except re.error as exc:
+            findings.append(
+                Finding(
+                    "error",
+                    "invalid_sensitive_pattern",
+                    f"Invalid sensitive pattern: {exc}.",
+                    detail=pattern,
+                )
+            )
+    return compiled_patterns, findings
+
+
+def _sensitive_findings(path: str, content: str, patterns: list[tuple[str, re.Pattern[str]]]) -> list[Finding]:
+    findings: list[Finding] = []
+    for pattern, compiled in patterns:
         for line_number, line in enumerate(content.splitlines(), start=1):
             if compiled.search(line):
                 findings.append(Finding("error", "sensitive_patterns", "Sensitive pattern matched.", path, line_number, pattern))

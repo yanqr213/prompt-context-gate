@@ -18,6 +18,7 @@
 - 支持从仓库文件和 manifest 生成标准 JSON/Markdown context bundle。
 - 支持 JSON 规则文件，也支持一个轻量 YAML 子集。
 - 检查总字节预算、估算 token 预算、单文件大小、必需路径、禁止路径、敏感正则、TODO/FIXME、README/测试/CI 覆盖。
+- 敏感正则写错时会报告 `invalid_sensitive_pattern`，不会让 `check` 以不透明的输入错误中断。
 - 输出 Markdown、JSON、CSV、SARIF。
 - SARIF 可上传到 GitHub Code Scanning，把上下文 bundle 的安全/质量问题显示在代码扫描视图里。
 - `check` 命令按规则阈值返回退出码，适合 CI gate。
@@ -164,6 +165,7 @@ JSON 支持对象或数组，最常见的是：
 
 - `required_paths` 和 `forbidden_paths` 使用 shell-style glob，例如 `src/**`、`**/*.pem`。
 - `sensitive_patterns` 是 Python 正则表达式。请使用脱敏样例测试规则。
+- 无效的 `sensitive_patterns` 会生成 `invalid_sensitive_pattern` error finding；如果 `fail_on` 包含 `error`，`check` 返回 `2`，方便 CI 直接指出是哪条规则需要修正。
 - `max_estimated_tokens` 使用本地近似估算：约 4 个字符计为 1 token。它不是模型 tokenizer，但足够用于稳定 CI 阈值。
 - `require_ci` 缺失时默认是 warning；只有当 `fail_on` 包含 `warning` 时才会让 CI 失败。
 
@@ -267,6 +269,8 @@ steps:
 
 The tool checks whether a bundle is too large, misses critical files, includes forbidden paths, contains secret-like patterns, leaves TODO/FIXME markers unresolved, exceeds per-file limits, or lacks README, test, and CI coverage.
 
+Invalid `sensitive_patterns` are reported as `invalid_sensitive_pattern` error findings instead of aborting the whole check, so CI can point maintainers to the rule that needs repair.
+
 ### Install
 
 ```bash
@@ -315,6 +319,7 @@ Key fields:
 - `required_paths`: glob patterns that must be present.
 - `forbidden_paths`: glob patterns that must not be present.
 - `sensitive_patterns`: Python regular expressions for secret-like content.
+- Invalid `sensitive_patterns` produce `invalid_sensitive_pattern` findings and return exit code `2` when `fail_on` includes `error`.
 - `todo_patterns`: markers such as `TODO` and `FIXME`.
 - `require_readme`, `require_tests`, `require_ci`: coverage checks.
 - `fail_on`: severities that should produce exit code `2`.
